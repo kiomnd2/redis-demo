@@ -4,22 +4,21 @@ import com.example.redistest.domain.Stock;
 import com.example.redistest.repository.StockRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
-public class StockService {
+public class PessimisticLockStockService {
 
-    private final StockRepository stockRepository;
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    private StockRepository stockRepository;
+
+    @Transactional
     public void decrease(Long id, Long quantity) {
-        // get stock
-        Stock stock = stockRepository.findById(id).orElseThrow();
-        // decrease
+        Stock stock = stockRepository.findByIdWithPessimisticLock(id);
+
         stock.decrease(quantity);
-        // 갱신된 값 저장
-        stockRepository.save(stock);
+
+        stockRepository.saveAndFlush(stock);
     }
 }

@@ -1,10 +1,17 @@
 package com.example.redistest.domain;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 
+@Getter
+@AllArgsConstructor
+@NoArgsConstructor
 @Entity
 public class Stock {
 
@@ -15,9 +22,8 @@ public class Stock {
 
     private Long quantity;
 
-    public Stock() {
 
-    }
+
 
     public Stock(Long productId, Long quantity) {
         this.productId = productId;
@@ -28,10 +34,11 @@ public class Stock {
         return quantity;
     }
 
-    public void decrease(Long quantity) {
+    public synchronized void decrease(Long quantity) {
         if (this.quantity - quantity < 0) {
             throw new RuntimeException("재고 없음");
         }
+        this.quantity -=  quantity;
     }
 
 }
