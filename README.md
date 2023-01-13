@@ -106,3 +106,5 @@
     @Query(value = "select release_lock(:key)", nativeQuery = true)
     void releaseLock(String key);
 ```
+
+## Redis 를 이용한 해결
