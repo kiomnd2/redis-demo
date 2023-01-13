@@ -108,3 +108,78 @@
 ```
 
 ## Redis 를 이용한 해결
+1. Lettuce
+   1. setnx 명령어를 활용하여 분산락 구현
+   2. spin lock 방식 : 락을 획득하려는 쓰레드가 락의 획득 가능 여부를 반복해서 확인
+2. Redisson
+   1. pub-sub 기반의 락 구현 제공
+      1. 락 획득을 대기중인 쓰레드에 락 사용가능 여부 전달
+
+### Lettuce 사용
+ * named Lock 과 사용방식이 비슷, 세션관리가 크게 필요 없다
+
+```java
+   while (!repository.lock(key)) {
+            Thread.sleep(100);
+        }
+
+        try {
+            stockService.decrease(key, quantity);
+        } finally {
+            repository.unlock(key);
+        }
+```
+* spin 락 방식이기 때문에, 레디스에 부하를 줄 수 있음
+
+
+### Redisson 사용
+- pub-sub 기반 
+- 레디슨의 경우 최초부터 락 api를 제공하고 있음
+```java
+
+        RLock lock = redissonClient.getLock(key.toString());
+
+        try {
+            boolean available = lock.tryLock(5, 1, TimeUnit.SECONDS);
+
+            if (!available) {
+                System.out.println("lock 획득 실패");
+                return;
+            }
+
+            stockService.decrease(key, quantity);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            lock.unlock();
+        }
+```
+- lettuce 에 비해 구현이 복잡해 질 수 있음
+
+
+### 각 라이브러리 장단점
+Lettuce
+- 구현이 간단
+- 스프링 redis 를 사용하면 추가로 라이브러리 등록하지 않아도 사용 가능
+- spin 락 방식이기 때문에 동시에 많은 스레드가 lock 획득을 위해 대기중이라면 redis에 부하가 갈 수 있음
+
+Redisson
+- 락 획득 재시도를 기본으로 제공
+- pub-sub 방식이기 때문에 redis에 부하가 덜감
+- 별도 라이브러리 사용해야함
+- lock 을 라이브러리 차원에서 제공해주기 때문에 학습이 필요
+
+- 재시도가 필요하지 않은 lock 은 lettuce 사용
+- 재시도가 필요한 경우 redisson 활용
+
+
+## mysql 과 redis 비교
+
+### Mysql
+- 이미 mysql 을 사용하면 별도의 비용없이 사용 가능
+- 어느정도 트래픽까지는 문제없이 사용 가능
+- redis보다는 성능이 좋지않다
+
+### Redis
+- 활용중인 redis가 없다면 별도의 구축비용과 인프라 관리비용 발생 
+- Mysql 에 비해 성능이 뛰어남
